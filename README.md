@@ -82,7 +82,7 @@ FROM     employees
 WHERE  (lastName LIKE 'B%')
 
 
-L1: Intermediate SQL - SOLUTION
+Intermediate SQL - SOLUTION
 •	Queries that involve working with multiple tables, using JOIN, GROUP BY, HAVING, and complex WHERE conditions.
 •	Introduction to subqueries, aggregate functions, and case statements.
 Questions:
@@ -195,3 +195,62 @@ SELECT
 FROM employees e
 LEFT JOIN employees m 
     ON e.reportsTo = m.employeeNumber
+
+Advanced SQL - SOLUTION
+With Window Functions
+1.	Rank Customers by Total Payments Within Each Country
+WITH paymentbycountry AS (SELECT customers.customerNumber, SUM(payments.amount) AS totalamount, customers.country, Rank() Over (Partition by customers.country Order by SUM(payments.amount) DESC) As Paymentrank
+FROM     customers INNER JOIN
+                  payments ON customers.customerNumber = payments.customerNumber
+GROUP BY customers.customerNumber, customers.country)
+Select *
+FROM paymentbycountry
+ORDER BY country
+
+2.	Find the Running Total of Sales per Employee
+With EmployeeSales AS (SELECT customers.salesRepEmployeeNumber, orders.orderDate, SUM(orderdetails.quantityOrdered * orderdetails.priceEach) AS Sale, SUM(SUM(orderdetails.quantityOrdered * orderdetails.priceEach)) Over (Partition by customers.salesRepEmployeeNumber Order by orders.orderDate) AS Cummulativesum
+FROM     customers INNER JOIN
+                  orders ON customers.customerNumber = orders.customerNumber INNER JOIN
+                  orderdetails ON orders.orderNumber = orderdetails.orderNumber
+GROUP BY customers.salesRepEmployeeNumber, orders.orderDate)
+SELECT *
+FROM EmployeeSales
+
+
+
+3.	Find Customers Above the Average Payment
+SELECT c.customerNumber, 
+       c.customerName, 
+       SUM(p.amount) AS TotalPayments
+FROM customers c
+JOIN payments p ON c.customerNumber = p.customerNumber
+GROUP BY c.customerNumber, c.customerName
+HAVING SUM(p.amount) > (
+    SELECT AVG(totalPayments)
+    FROM (
+        SELECT SUM(amount) AS totalPayments
+        FROM payments
+        GROUP BY customerNumber
+    ) AS customerTotals
+)
+ORDER BY TotalPayments DESC;
+
+4.	Find Products That Have Never Been Ordered
+SELECT p.productCode, p.productName
+FROM products p
+WHERE p.productCode NOT IN (
+    SELECT DISTINCT od.productCode FROM orderdetails od
+);
+
+5.	Highest Payment per Customer 
+SELECT c.customerNumber,
+       c.customerName,
+       p.checkNumber,
+       p.amount
+FROM customers c
+JOIN payments p ON c.customerNumber = p.customerNumber
+WHERE p.amount = (
+    SELECT MAX(p2.amount)
+    FROM payments p2
+    WHERE p2.customerNumber = c.customerNumber
+);
